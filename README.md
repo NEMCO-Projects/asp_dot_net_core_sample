@@ -1,3 +1,24 @@
+install IIS on machine in Power Shell
+'''
+Install-WindowsFeature -Name Web-Server -IncludeManagementTools
+'''
+
+ Install Visual Studio Build Tools
+Go to Visual Studio Downloads
+
+Download Build Tools for Visual Studio 2022
+
+During installation, select:
+
+✅ .NET Framework build tools
+✅ Web development build tools
+
+Note : Download link
+https://aka.ms/vs/17/release/vs_BuildTools.exe
+
+
+
+
 
 # ASP.Net Core MVC Application with SQL Server Database from Start to Finish
 
