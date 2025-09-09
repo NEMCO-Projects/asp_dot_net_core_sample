@@ -1,0 +1,67 @@
+trigger:
+- master
+
+pool:
+  name: AzUser  # Your self-hosted agent
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+
+# Step 1: Install NuGet
+- task: NuGetToolInstaller@1
+
+# Step 2: Restore NuGet packages
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+# Step 3: Build the solution
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+# Step 4: Publish the project (creates ZIP)
+- task: DotNetCoreCLI@2
+  displayName: '📦 Publish Web App'
+  inputs:
+    command: 'publish'
+    publishWebProjects: true
+    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/published'
+    zipAfterPublish: true
+
+# Step 5: List files in the published folder
+- script: |
+    echo "📁 Listing contents of published folder:"
+    dir "$(Build.ArtifactStagingDirectory)\published" /s
+  displayName: '🗂️ List Published Directory Contents'
+
+# Step 6: Unzip the published output
+- powershell: |
+    Write-Host "📦 Unzipping PropertyRental.zip..."
+    $zipPath = "$(Build.ArtifactStagingDirectory)\published\PropertyRental.zip"
+    $destination = "$(Build.ArtifactStagingDirectory)\unzipped"
+    New-Item -ItemType Directory -Path $destination -Force | Out-Null
+    Expand-Archive -Path $zipPath -DestinationPath $destination -Force
+    Write-Host "📂 Unzipped contents:"
+    Get-ChildItem -Recurse $destination
+  displayName: '🔓 Unzip Published Output'
+
+# Step 7: Deploy to IIS on remote server using Web Deploy
+- task: IISWebAppDeploymentOnMachineGroup@0
+  displayName: '🚀 Deploy to IIS'
+  inputs:
+    WebSiteName: 'Default Web Site'
+    Package: '$(Build.ArtifactStagingDirectory)\unzipped'
+    TakeAppOfflineFlag: true
+    RemoveAdditionalFilesFlag: true
+    XmlTransformation: false
+    XmlVariableSubstitution: false
+    MachineNames: '$(iisIpAddress)'         # Add variable in pipeline
+    AdminUserName: '$(iisUsername)'         # Add variable in pipeline
+    AdminPassword: '$(iisPassword)'         # Use secret variable in pipeline
